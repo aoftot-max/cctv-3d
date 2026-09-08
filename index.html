@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>CCTV 3D · กาญจนบุรี</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #030712;
+        --panel: rgba(12, 18, 32, 0.92);
+        --border: rgba(255, 255, 255, 0.08);
+        --accent: #22d3ee;
+        --down: #f87171;
+        --up: #22d3ee;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body, #app {
+        width: 100%; height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'IBM Plex Sans Thai', system-ui, sans-serif;
+        touch-action: none;
+      }
+      canvas { display: block; width: 100%; height: 100%; }
+      .hud-top {
+        position: fixed; top: 12px; left: 12px; right: 60px;
+        z-index: 20; display: flex; flex-wrap: wrap; gap: 8px;
+        pointer-events: none;
+      }
+      .chip {
+        pointer-events: auto;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 0.78rem;
+        color: var(--muted);
+        backdrop-filter: blur(8px);
+      }
+      .chip strong { color: var(--text); font-weight: 600; }
+      .chip.down strong { color: var(--down); }
+      .chip.up strong { color: var(--accent); }
+      .toolbar {
+        position: fixed; top: 12px; right: 12px; z-index: 20;
+        display: flex; flex-direction: column; align-items: center; gap: 8px;
+      }
+      .compass {
+        width: 42px; height: 42px; border-radius: 50%;
+        background: var(--panel); border: 1px solid var(--border);
+        position: relative; cursor: pointer;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+      }
+      .compass .needle {
+        position: absolute; top: 5px; left: 50%;
+        width: 0; height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-bottom: 11px solid #f87171;
+        transform: translateX(-50%);
+        transform-origin: 50% 15px;
+        transition: transform 0.2s ease;
+      }
+      .compass .n {
+        position: absolute; top: 17px; left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.58rem; font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+      }
+      .tool-group {
+        display: flex; flex-direction: column;
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: 14px; overflow: hidden;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+      }
+      .tool-btn {
+        width: 42px; height: 42px; border: none; background: transparent;
+        color: #cbd5e1; cursor: pointer; display: grid; place-items: center;
+      }
+      .tool-btn + .tool-btn { border-top: 1px solid rgba(255,255,255,0.06); }
+      .tool-btn:hover, .tool-btn.active { background: rgba(34,211,238,0.15); color: var(--accent); }
+      .tool-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      .popup {
+        position: fixed; z-index: 30; min-width: 200px; max-width: 280px;
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: 10px; padding: 12px 14px;
+        box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+        display: none; pointer-events: auto;
+      }
+      .popup h3 { font-size: 0.9rem; color: var(--accent); margin-bottom: 6px; }
+      .popup p { font-size: 0.75rem; color: var(--muted); line-height: 1.45; }
+      .popup .st-up { color: #4ade80; } .popup .st-down { color: var(--down); }
+      .loading {
+        position: fixed; inset: 0; z-index: 50;
+        display: grid; place-items: center;
+        background: var(--bg); color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .loading.hide { display: none; }
+      .hint {
+        position: fixed; bottom: 14px; left: 50%; transform: translateX(-50%);
+        z-index: 20; font-size: 0.72rem; color: var(--muted);
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: 999px; padding: 6px 14px;
+        pointer-events: none; white-space: nowrap;
+      }
+      @media (max-width: 640px) {
+        .hint { font-size: 0.65rem; max-width: 92vw; white-space: normal; text-align: center; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div class="loading" id="loading">กำลังโหลดแผนที่ 3D · กาญจนบุรี…</div>
+    <div class="hud-top">
+      <div class="chip">CCTV 3D · <strong>กาญจนบุรี</strong></div>
+      <div class="chip up">ออนไลน์ <strong id="stat-up">–</strong></div>
+      <div class="chip down">ออฟไลน์ <strong id="stat-down">–</strong></div>
+      <div class="chip">ทั้งหมด <strong id="stat-total">–</strong></div>
+    </div>
+    <div class="toolbar">
+      <button type="button" class="compass" id="btn-north" title="ทิศเหนือ">
+        <span class="needle" id="needle"></span>
+        <span class="n">N</span>
+      </button>
+      <div class="tool-group">
+        <button type="button" class="tool-btn active" id="btn-select" title="หมุน / เลือก">
+          <svg viewBox="0 0 24 24"><path d="M4 4l7 17 2.5-7.5L21 11z"/></svg>
+        </button>
+        <button type="button" class="tool-btn" id="btn-pan" title="เลื่อน">
+          <svg viewBox="0 0 24 24"><path d="M8 13v5a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2v-3"/><path d="M12 15V7a2 2 0 1 1 4 0v8"/><path d="M16 13V9a2 2 0 1 1 4 0v5a6 6 0 0 1-6 6h-2a6 6 0 0 1-6-6v-3a2 2 0 1 1 4 0"/></svg>
+        </button>
+        <button type="button" class="tool-btn" id="btn-zoomin" title="ซูมเข้า">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <button type="button" class="tool-btn" id="btn-zoomout" title="ซูมออก">
+          <svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>
+        </button>
+        <button type="button" class="tool-btn" id="btn-fs" title="เต็มจอ">
+          <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="popup" id="popup"></div>
+    <div class="hint" id="hint">ลากเพื่อหมุน · คลิกจุดกล้อง · นิ้วสองนิ้วซูมบนมือถือ</div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
