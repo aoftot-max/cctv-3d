@@ -1,8 +1,3 @@
 {
-  "rewrites": [
-    {
-      "source": "/api/cctv",
-      "destination": "https://script.google.com/macros/s/AKfycbwRHsxi70asLOreOmTe0JboHWmEo4KY80EOrLy7xn8xsP10OSKBK-vCzMq4P4ngNrvu/exec"
-    }
-  ]
+  "framework": "vite"
 }
